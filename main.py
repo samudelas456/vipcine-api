@@ -4,6 +4,11 @@ import ssl
 import random
 import time
 import os
+import traceback
+
+from email.mime.text import MIMEText
+from email.header import Header
+from email.utils import formataddr
 
 app = Flask(__name__)
 codigos = {}
@@ -24,6 +29,7 @@ def gerar_codigo():
         if not email:
             return jsonify({"erro": "E-mail não fornecido"}), 400
 
+        # Gerar código e salvar com tempo de expiração
         codigo = str(random.randint(100000, 999999))
         expira_em = time.time() + 300  # 5 minutos
 
@@ -32,17 +38,27 @@ def gerar_codigo():
             "expira_em": expira_em
         }
 
-        mensagem = f"Subject: Código de Verificação VIPCINE\n\nSeu código é: {codigo}"
+        # Criar mensagem formatada com suporte a acentos
+        corpo = f"Seu código de verificação VIPCINE é: {codigo}"
+        mensagem = MIMEText(corpo, "plain", "utf-8")
+        mensagem["Subject"] = Header("Código de Verificação VIPCINE", "utf-8")
+        mensagem["From"] = formataddr(("VIPCINE", GMAIL_USER))
+        mensagem["To"] = email
 
+        # Enviar e-mail
         context = ssl.create_default_context()
         with smtplib.SMTP("smtp.gmail.com", 587) as server:
             server.starttls(context=context)
             server.login(GMAIL_USER, GMAIL_PASS)
-            server.sendmail(GMAIL_USER, email, mensagem.encode('utf-8'))
+            server.sendmail(GMAIL_USER, email, mensagem.as_string())
 
-        return jsonify({"mensagem": "Código enviado com sucesso!", "tempo_restante": 300})
+        return jsonify({
+            "mensagem": "Código enviado com sucesso!",
+            "tempo_restante": 300
+        })
 
     except Exception as e:
+        traceback.print_exc()  # Mostra erro no console do Render
         return jsonify({"erro": str(e)}), 500
 
 @app.route('/verificar_codigo', methods=['POST'])
@@ -83,6 +99,7 @@ def verificar_codigo():
             })
 
     except Exception as e:
+        traceback.print_exc()
         return jsonify({"erro": str(e), "verificado": False}), 500
 
 if __name__ == '__main__':
