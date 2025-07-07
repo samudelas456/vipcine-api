@@ -7,9 +7,8 @@ import os
 app = Flask(__name__)
 codigos = {}
 
-# Use variáveis de ambiente para maior segurança (opcional)
-GMAIL_USER = os.environ.get("GMAIL_USER", "baianor058@gmail.com")
-GMAIL_PASS = os.environ.get("GMAIL_PASS", "ltiu pfwn qgvb khsi")
+GMAIL_USER = os.environ.get("GMAIL_USER", "seuemail@gmail.com")
+GMAIL_PASS = os.environ.get("GMAIL_PASS", "sua_senha_de_app")
 
 @app.route('/')
 def home():
@@ -33,7 +32,7 @@ def gerar_codigo():
         with smtplib.SMTP("smtp.gmail.com", 587) as server:
             server.starttls(context=context)
             server.login(GMAIL_USER, GMAIL_PASS)
-            server.sendmail(GMAIL_USER, email, mensagem)
+            server.sendmail(GMAIL_USER, email, mensagem.encode('utf-8'))
 
         return jsonify({"mensagem": "Código enviado com sucesso!"})
 
