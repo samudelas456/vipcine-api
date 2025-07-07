@@ -7,24 +7,28 @@ import os
 app = Flask(__name__)
 codigos = {}
 
-# Substitua pelos seus dados reais
-GMAIL_USER = "baianor058@gmail.com"
-GMAIL_PASS = "ltiu pfwn qgvb khsi"
+# Use variáveis de ambiente para maior segurança (opcional)
+GMAIL_USER = os.environ.get("GMAIL_USER", "baianor058@gmail.com")
+GMAIL_PASS = os.environ.get("GMAIL_PASS", "ltiu pfwn qgvb khsi")
+
+@app.route('/')
+def home():
+    return "✅ API VIPCINE ONLINE – Use /gerar_codigo e /verificar_codigo com POST"
 
 @app.route('/gerar_codigo', methods=['POST'])
 def gerar_codigo():
-    data = request.get_json()
-    email = data.get('email')
-    
-    if not email:
-        return jsonify({"erro": "E-mail não fornecido"}), 400
-
-    codigo = str(random.randint(100000, 999999))
-    codigos[email] = codigo
-
-    mensagem = f"Subject: Código de Verificação VIPCINE\n\nSeu código é: {codigo}"
-
     try:
+        data = request.get_json(force=True)
+        email = data.get('email')
+
+        if not email:
+            return jsonify({"erro": "E-mail não fornecido"}), 400
+
+        codigo = str(random.randint(100000, 999999))
+        codigos[email] = codigo
+
+        mensagem = f"Subject: Código de Verificação VIPCINE\n\nSeu código é: {codigo}"
+
         context = ssl.create_default_context()
         with smtplib.SMTP("smtp.gmail.com", 587) as server:
             server.starttls(context=context)
@@ -32,21 +36,24 @@ def gerar_codigo():
             server.sendmail(GMAIL_USER, email, mensagem)
 
         return jsonify({"mensagem": "Código enviado com sucesso!"})
+
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
 
 @app.route('/verificar_codigo', methods=['POST'])
 def verificar_codigo():
-    data = request.get_json()
-    email = data.get('email')
-    codigo = data.get('codigo')
+    try:
+        data = request.get_json(force=True)
+        email = data.get('email')
+        codigo = data.get('codigo')
 
-    if codigos.get(email) == codigo:
-        return jsonify({"verificado": True})
-    else:
-        return jsonify({"verificado": False})
+        if codigos.get(email) == codigo:
+            return jsonify({"verificado": True})
+        else:
+            return jsonify({"verificado": False})
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
 
-# Obrigatório no Render
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
