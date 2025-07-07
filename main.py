@@ -7,8 +7,8 @@ import os
 app = Flask(__name__)
 codigos = {}
 
-GMAIL_USER = os.environ.get("GMAIL_USER", "seuemail@gmail.com")
-GMAIL_PASS = os.environ.get("GMAIL_PASS", "sua_senha_de_app")
+GMAIL_USER = os.environ.get("GMAIL_USER", "baianor058@gmail.com")
+GMAIL_PASS = os.environ.get("GMAIL_PASS", "ltiu pfwn qgvb khsi")
 
 @app.route('/')
 def home():
