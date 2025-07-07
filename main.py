@@ -9,8 +9,8 @@ app = Flask(__name__)
 codigos = {}
 
 # Login do Gmail
-GMAIL_USER = os.environ.get("GMAIL_USER", "seuemail@gmail.com")
-GMAIL_PASS = os.environ.get("GMAIL_PASS", "senha_do_app")
+GMAIL_USER = os.environ.get("GMAIL_USER", "vipcinebr@gmail.com")
+GMAIL_PASS = os.environ.get("GMAIL_PASS", "boao kxzz hqhr unau")
 
 # Página inicial simples
 @app.route('/')
