@@ -1,10 +1,13 @@
 from flask import Flask, request, jsonify
-import smtplib, ssl, random
+import smtplib
+import ssl
+import random
+import os
 
 app = Flask(__name__)
 codigos = {}
 
-# Substitua pelos seus dados:
+# Substitua pelos seus dados reais
 GMAIL_USER = "baianor058@gmail.com"
 GMAIL_PASS = "ltiu pfwn qgvb khsi"
 
@@ -43,5 +46,7 @@ def verificar_codigo():
     else:
         return jsonify({"verificado": False})
 
+# Obrigatório no Render
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
