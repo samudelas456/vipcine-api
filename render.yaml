@@ -1,6 +1,6 @@
 services: []
 jobs:
-  - name: vipcinebr-scraper
+  - name: vipcine-api
     type: cron
     schedule: "*/30 * * * *"  # roda a cada 30 minutos
     env: python
