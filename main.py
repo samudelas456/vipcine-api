@@ -1,107 +1,51 @@
-from flask import Flask, request, jsonify
-import smtplib
-import ssl
-import random
-import time
-import os
-import traceback
+import asyncio
+import json
+import requests
+from playwright.async_api import async_playwright
 
-from email.mime.text import MIMEText
-from email.header import Header
-from email.utils import formataddr
+FIREBASE_URL = "https://smartflix-73adf-default-rtdb.firebaseio.com/canais.json"
 
-app = Flask(__name__)
-codigos = {}
+async def pegar_canais():
+    canais = []
 
-GMAIL_USER = os.environ.get("GMAIL_USER", "vipcinebr@gmail.com")
-GMAIL_PASS = os.environ.get("GMAIL_PASS", "boao kxzz hqhr unau")
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True, args=["--no-sandbox"])
+        context = await browser.new_context(user_agent="Mozilla/5.0")
+        page = await context.new_page()
+        await page.goto("https://redecanaistv.gs/", timeout=60000)
+        await page.wait_for_selector("div.canais")
 
-@app.route('/')
-def home():
-    return "✅ API VIPCINE ONLINE – Use /gerar_codigo e /verificar_codigo com POST"
+        elementos = await page.query_selector_all("div.canais > div")
 
-@app.route('/gerar_codigo', methods=['POST'])
-def gerar_codigo():
-    try:
-        data = request.get_json(force=True)
-        email = data.get('email', '').strip().lower()
+        for el in elementos[:10]:
+            try:
+                nome = await el.query_selector_eval("h3", "e => e.innerText")
+                banner = await el.query_selector_eval("img", "e => e.src")
+                link = await el.query_selector("a").get_attribute("href")
 
-        if not email:
-            return jsonify({"erro": "E-mail não fornecido"}), 400
+                player_page = await context.new_page()
+                await player_page.goto(link)
+                await player_page.wait_for_timeout(5000)
+                iframe = await player_page.query_selector("iframe")
+                player = await iframe.get_attribute("src") if iframe else "N/A"
+                await player_page.close()
 
-        # Gerar código e salvar com tempo de expiração
-        codigo = str(random.randint(100000, 999999))
-        expira_em = time.time() + 300  # 5 minutos
+                canais.append({
+                    "nome": nome,
+                    "banner": banner,
+                    "player": player,
+                    "link": link
+                })
 
-        codigos[email] = {
-            "codigo": codigo,
-            "expira_em": expira_em
-        }
+            except Exception as e:
+                print("Erro:", e)
 
-        # Criar mensagem formatada com suporte a acentos
-        corpo = f"Seu código de verificação VIPCINE é: {codigo}"
-        mensagem = MIMEText(corpo, "plain", "utf-8")
-        mensagem["Subject"] = Header("Código de Verificação VIPCINE", "utf-8")
-        mensagem["From"] = formataddr(("VIPCINE", GMAIL_USER))
-        mensagem["To"] = email
+        await browser.close()
+        return canais
 
-        # Enviar e-mail
-        context = ssl.create_default_context()
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
-            server.starttls(context=context)
-            server.login(GMAIL_USER, GMAIL_PASS)
-            server.sendmail(GMAIL_USER, email, mensagem.as_string())
+async def salvar_firebase():
+    canais = await pegar_canais()
+    r = requests.put(FIREBASE_URL, data=json.dumps(canais))
+    print("🔥 Firebase:", r.status_code, r.text)
 
-        return jsonify({
-            "mensagem": "Código enviado com sucesso!",
-            "tempo_restante": 300
-        })
-
-    except Exception as e:
-        traceback.print_exc()  # Mostra erro no console do Render
-        return jsonify({"erro": str(e)}), 500
-
-@app.route('/verificar_codigo', methods=['POST'])
-def verificar_codigo():
-    try:
-        data = request.get_json(force=True)
-        email = data.get('email', '').strip().lower()
-        codigo = str(data.get('codigo', '')).strip()
-
-        info = codigos.get(email)
-
-        if not info:
-            return jsonify({
-                "verificado": False,
-                "erro": "Código não encontrado.",
-                "tempo_restante": 0
-            })
-
-        tempo_restante = int(info['expira_em'] - time.time())
-
-        if tempo_restante <= 0:
-            return jsonify({
-                "verificado": False,
-                "erro": "Código expirado.",
-                "tempo_restante": 0
-            })
-
-        if info['codigo'] == codigo:
-            return jsonify({
-                "verificado": True,
-                "tempo_restante": tempo_restante
-            })
-        else:
-            return jsonify({
-                "verificado": False,
-                "erro": "Código incorreto.",
-                "tempo_restante": tempo_restante
-            })
-
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"erro": str(e), "verificado": False}), 500
-
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+asyncio.run(salvar_firebase())
