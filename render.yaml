@@ -1,1 +1,8 @@
-
+services: []
+jobs:
+  - name: vipcinebr-scraper
+    type: cron
+    schedule: "*/30 * * * *"  # roda a cada 30 minutos
+    env: python
+    buildCommand: pip install -r requirements.txt && playwright install --with-deps
+    startCommand: python main.py
